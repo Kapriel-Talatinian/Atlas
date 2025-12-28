@@ -1,0 +1,5 @@
+balance.toString();
+const balance = await myToken.checkBalance(me);
+(const [me] = await ethers.getSigners()).address;
+const myToken = await ethers.getContractAt("MyToken", tokenAddress);
+const tokenAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";

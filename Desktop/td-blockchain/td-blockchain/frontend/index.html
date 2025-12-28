@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>TD Blockchain – Web3 Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Ethers.js v5 -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #020617;
+      --bg-card: rgba(15, 23, 42, 0.9);
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.2);
+      --accent-strong: #2563eb;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --danger: #f97373;
+      --success: #22c55e;
+      --radius-xl: 18px;
+      --shadow-soft: 0 18px 55px rgba(0, 0, 0, 0.6);
+      --glass: rgba(15, 23, 42, 0.85);
+      --border: rgba(148, 163, 184, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, #1d4ed8 0, transparent 55%),
+        radial-gradient(circle at bottom right, #a855f7 0, transparent 55%),
+        radial-gradient(circle at top right, #22c55e 0, transparent 45%),
+        #020617;
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1100px;
+      margin: auto;
+      padding: 24px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.92));
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      backdrop-filter: blur(26px);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 span.logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #f97316, #a855f7);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+      box-shadow: 0 0 22px rgba(234, 179, 8, 0.8);
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .badge-net {
+      font-size: 0.78rem;
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: rgba(15, 118, 110, 0.2);
+      border: 1px solid rgba(45, 212, 191, 0.45);
+      color: #a5f3fc;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 10px #22c55e;
+    }
+
+    .wallet-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .wallet-address {
+      font-size: 0.8rem;
+      color: var(--muted);
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: var(--accent);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+      transition: all 0.16s ease;
+    }
+
+    button:hover {
+      background: var(--accent-strong);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(59, 130, 246, 0.5);
+    }
+
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      box-shadow: none;
+      color: var(--text);
+    }
+
+    button.secondary:hover {
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(55, 65, 81, 0.8);
+      font-size: 0.85rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+
+    .tab.active {
+      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.7), rgba(37, 99, 235, 0.6));
+      border-color: rgba(191, 219, 254, 0.9);
+      color: #eff6ff;
+      box-shadow: 0 12px 30px rgba(37, 99, 235, 0.5);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 18px;
+    }
+
+    @media (max-width: 880px) {
+      main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .wallet-panel {
+        align-items: flex-start;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    .card {
+      background: var(--glass);
+      border-radius: var(--radius-xl);
+      padding: 16px 18px 18px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      box-shadow: 0 14px 35px rgba(15, 23, 42, 0.9);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(96, 165, 250, 0.22), transparent 60%);
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    .card-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title span.icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(248, 250, 252, 0.06);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      font-size: 0.85rem;
+    }
+
+    .card-subtitle {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      margin-top: 10px;
+      margin-bottom: 3px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 1));
+      color: var(--text);
+      font-size: 0.85rem;
+      outline: none;
+      transition: all 0.16s ease;
+    }
+
+    input:focus {
+      border-color: rgba(129, 140, 248, 1);
+      box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.7);
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .row > * {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(71, 85, 105, 0.9);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .stat-pill strong {
+      color: #f9fafb;
+      font-weight: 600;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .status.good {
+      color: var(--success);
+    }
+
+    .status.bad {
+      color: var(--danger);
+    }
+
+    .pill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(30, 64, 175, 0.3);
+      border: 1px solid rgba(191, 219, 254, 0.6);
+      color: #dbeafe;
+    }
+
+    .muted-note {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .section-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      margin-top: 6px;
+      margin-bottom: 6px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    @media (max-width: 720px) {
+      .grid-2 {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    code {
+      font-size: 0.76rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      color: #e5e7eb;
+    }
+
+    a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title-block">
+        <h1>
+          <span class="logo">TD</span>
+          TD Blockchain – Web3 Dashboard
+        </h1>
+        <div class="subtitle">
+          Contrôle ton token ERC-20, tes NFT ERC-721 et ta marketplace, le tout depuis une seule interface.
+        </div>
+        <div class="badge-net">
+          <span class="badge-dot"></span>
+          Réseau conseillé : Hardhat (localhost:8545)
+        </div>
+      </div>
+
+      <div class="wallet-panel">
+        <div class="wallet-address" id="walletAddress">Non connecté</div>
+        <div class="row">
+          <button id="connectBtn">
+            <span>🦊</span>
+            Connecter MetaMask
+          </button>
+          <button id="switchHardhatBtn" class="secondary">
+            🛰 Réseau Hardhat
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="tab-token">Token ERC-20</button>
+      <button class="tab" data-tab="tab-nft">NFT & Admin</button>
+      <button class="tab" data-tab="tab-market">Marketplace</button>
+    </div>
+
+    <main>
+      <!-- Colonne gauche -->
+      <section id="tab-token" class="card">
+        <div class="card-inner">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="icon">🪙</span>
+              MyToken – ERC-20
+            </div>
+            <span class="pill-tag" id="tokenTag">Contrat non chargé</span>
+          </div>
+          <div class="card-subtitle">
+            Colle l’adresse de ton contrat <code>MyToken</code> déployé sur le réseau actuel, puis interagis avec ton solde.
+          </div>
+
+          <label>Adresse du contrat MyToken</label>
+          <input id="tokenAddress" placeholder="0x..." />
+
+          <div class="row">
+            <button id="loadTokenBtn">Charger MyToken</button>
+            <button id="tokenInfoBtn" class="secondary">Infos</button>
+          </div>
+
+          <div class="section-title">Mon solde</div>
+          <div class="row">
+            <button id="balanceBtn">Voir mon solde</button>
+            <div class="stat-pill">
+              Solde : <strong id="myBalance">—</strong>
+            </div>
+          </div>
+
+          <div class="section-title">Transfert simple</div>
+          <label>Destinataire</label>
+          <input id="toAddress" placeholder="0x..." />
+          <label>Montant (en tokens, par ex. 10)</label>
+          <input id="amount" placeholder="10" />
+          <button id="transferBtn">Transférer des tokens</button>
+
+          <div class="section-title">Staking</div>
+          <div class="row">
+            <input id="stakeAmount" placeholder="Montant à staker (ex: 5)" />
+            <button id="stakeBtn" class="secondary">Stake</button>
+            <button id="unstakeBtn" class="secondary">Unstake</button>
+          </div>
+          <div class="muted-note">
+            Le staking envoie tes tokens au contrat, puis te rend le montant + une récompense au moment de l’unstake.
+          </div>
+
+          <div id="tokenStatus" class="status"></div>
+        </div>
+      </section>
+
+      <!-- Colonne droite: deux cartes empilées -->
+      <section class="grid-2">
+        <div id="tab-nft" class="card">
+          <div class="card-inner">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="icon">🎴</span>
+                MyNFT – ERC-721
+              </div>
+              <span class="pill-tag" id="nftTag">Contrat non chargé</span>
+            </div>
+            <div class="card-subtitle">
+              Gère le mint d’NFT, la lecture du propriétaire et les transferts sécurisés.
+            </div>
+
+            <label>Adresse du contrat MyNFT</label>
+            <input id="nftAddress" placeholder="0x..." />
+
+            <div class="row">
+              <button id="loadNftBtn">Charger MyNFT</button>
+              <button id="nftAdminBtn" class="secondary">Voir admin</button>
+            </div>
+
+            <div class="section-title">Mint NFT</div>
+            <label>URI de métadonnées (HTTP ou IPFS)</label>
+            <input id="nftUri" placeholder="https://example.com/metadata.json" />
+            <button id="mintNftBtn">Mint vers mon adresse</button>
+
+            <div class="section-title">Infos & Transfert</div>
+            <label>Token ID</label>
+            <input id="nftTokenId" placeholder="0" />
+
+            <div class="row">
+              <button id="ownerOfBtn" class="secondary">Voir owner</button>
+              <button id="tokenUriBtn" class="secondary">Voir URI</button>
+            </div>
+
+            <label>Transférer à</label>
+            <input id="nftToAddress" placeholder="0x..." />
+            <button id="nftTransferBtn">safeTransfer()</button>
+
+            <div id="nftStatus" class="status"></div>
+          </div>
+        </div>
+
+        <div id="tab-market" class="card">
+          <div class="card-inner">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="icon">🏪</span>
+                NFT Marketplace
+              </div>
+              <span class="pill-tag" id="marketTag">Contrat non chargé</span>
+            </div>
+            <div class="card-subtitle">
+              Liste un NFT en vente, approuve la marketplace et effectue un achat avec un autre compte.
+            </div>
+
+            <label>Adresse du contrat Marketplace</label>
+            <input id="marketAddress" placeholder="0x..." />
+
+            <label>Adresse du contrat MyNFT utilisé avec la marketplace</label>
+            <input id="marketNftAddress" placeholder="0x..." />
+
+            <div class="row">
+              <button id="loadMarketBtn">Charger Marketplace</button>
+              <button id="feeInfoBtn" class="secondary">Infos fees</button>
+            </div>
+
+            <div class="section-title">Listing</div>
+            <label>Token ID à vendre</label>
+            <input id="marketTokenId" placeholder="1" />
+            <label>Prix (en ETH, ex: 0.1)</label>
+            <input id="marketPrice" placeholder="0.1" />
+
+            <div class="row">
+              <button id="approveMarketBtn" class="secondary">Approve NFT → marketplace</button>
+              <button id="listBtn">Lister le NFT</button>
+            </div>
+
+            <div class="section-title">Acheter / Voir une annonce</div>
+            <label>Listing ID</label>
+            <input id="listingId" placeholder="0" />
+
+            <div class="row">
+              <button id="viewListingBtn" class="secondary">Voir annonce</button>
+              <button id="buyBtn">Acheter</button>
+            </div>
+
+            <div id="marketStatus" class="status"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // ---------- STATE GLOBAL ----------
+    let provider = null;
+    let signer = null;
+    let currentAddress = null;
+
+    let tokenContract = null;
+    let nftContract = null;
+    let marketContract = null;
+    let marketNftForTrading = null;
+
+    // ---------- ABIs MINIMALES ----------
+    const myTokenAbi = [
+      "function name() view returns (string)",
+      "function symbol() view returns (string)",
+      "function decimals() view returns (uint8)",
+      "function balanceOf(address) view returns (uint256)",
+      "function transfer(address to, uint256 amount) returns (bool)",
+      "function checkBalance(address) view returns (uint256)",
+      "function approveAndCheck(address spender, uint256 amount) returns (uint256)",
+      "function stake(uint256 amount)",
+      "function unstake()",
+      "function stakedBalance(address) view returns (uint256)"
+    ];
+
+    const myNftAbi = [
+      "function admin() view returns (address)",
+      "function mintNFT(address to, string memory tokenURI) returns (uint256)",
+      "function safeTransfer(address from, address to, uint256 tokenId)",
+      "function changeAdmin(address newAdmin)",
+      "function ownerOf(uint256 tokenId) view returns (address)",
+      "function tokenURI(uint256 tokenId) view returns (string)"
+    ];
+
+    const marketplaceAbi = [
+      "function feeBasisPoints() view returns (uint256)",
+      "function feeRecipient() view returns (address)",
+      "function listNFT(address nft, uint256 tokenId, uint256 price)",
+      "function buyNFT(uint256 listingId) payable",
+      "function cancelListing(uint256 listingId)",
+      "function listings(uint256 listingId) view returns (address seller, address nft, uint256 tokenId, uint256 price, bool active)"
+    ];
+
+    // ---------- UI HELPERS ----------
+    const walletAddressSpan = document.getElementById("walletAddress");
+
+    const tokenTag = document.getElementById("tokenTag");
+    const nftTag = document.getElementById("nftTag");
+    const marketTag = document.getElementById("marketTag");
+
+    const tokenStatus = document.getElementById("tokenStatus");
+    const nftStatus = document.getElementById("nftStatus");
+    const marketStatus = document.getElementById("marketStatus");
+
+    const myBalanceSpan = document.getElementById("myBalance");
+
+    function setStatus(el, msg, type = "") {
+      el.textContent = msg || "";
+      el.classList.remove("good", "bad");
+      if (type === "good") el.classList.add("good");
+      if (type === "bad") el.classList.add("bad");
+    }
+
+    function shorten(addr) {
+      if (!addr) return "—";
+      return addr.slice(0, 6) + "…" + addr.slice(-4);
+    }
+
+    // ---------- TABS ----------
+    const tabs = document.querySelectorAll(".tab");
+    const sections = {
+      "tab-token": document.getElementById("tab-token"),
+      "tab-nft": document.getElementById("tab-nft"),
+      "tab-market": document.getElementById("tab-market")
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        Object.values(sections).forEach((sec) => (sec.style.display = "none"));
+        const id = tab.getAttribute("data-tab");
+        if (sections[id]) sections[id].style.display = "block";
+      });
+    });
+
+    // init: n'afficher que la première section
+    Object.values(sections).forEach((sec) => (sec.style.display = "none"));
+    sections["tab-token"].style.display = "block";
+
+    // ---------- CONNEXION METAMASK ----------
+    async function ensureProvider() {
+      if (!window.ethereum) {
+        alert("MetaMask n'est pas installé. Installe-le pour continuer.");
+        throw new Error("No MetaMask");
+      }
+      if (!provider) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+      }
+      return provider;
+    }
+
+    async function connectWallet() {
+      try {
+        const prov = await ensureProvider();
+        await prov.send("eth_requestAccounts", []);
+        signer = prov.getSigner();
+        currentAddress = await signer.getAddress();
+        walletAddressSpan.textContent = shorten(currentAddress);
+      } catch (err) {
+        console.error(err);
+        alert("Erreur lors de la connexion à MetaMask.");
+      }
+    }
+
+    async function switchToHardhat() {
+      try {
+        const prov = await ensureProvider();
+        await prov.send("wallet_addEthereumChain", [
+          {
+            chainId: "0x7A69", // 31337
+            chainName: "Hardhat Local",
+            rpcUrls: ["http://127.0.0.1:8545"],
+            nativeCurrency: {
+              name: "Hardhat ETH",
+              symbol: "ETH",
+              decimals: 18
+            }
+          }
+        ]);
+      } catch (err) {
+        console.error(err);
+        alert("Impossible d'ajouter / de basculer sur le réseau Hardhat (localhost).");
+      }
+    }
+
+    document.getElementById("connectBtn").addEventListener("click", connectWallet);
+    document.getElementById("switchHardhatBtn").addEventListener("click", switchToHardhat);
+
+    // ---------- TOKEN (ERC-20) ----------
+    const tokenAddressInput = document.getElementById("tokenAddress");
+    const loadTokenBtn = document.getElementById("loadTokenBtn");
+    const tokenInfoBtn = document.getElementById("tokenInfoBtn");
+    const balanceBtn = document.getElementById("balanceBtn");
+    const transferBtn = document.getElementById("transferBtn");
+    const stakeBtn = document.getElementById("stakeBtn");
+    const unstakeBtn = document.getElementById("unstakeBtn");
+
+    loadTokenBtn.addEventListener("click", async () => {
+      try {
+        if (!signer) await connectWallet();
+        const addr = tokenAddressInput.value.trim();
+        if (!addr) return alert("Renseigne l'adresse du contrat MyToken.");
+        tokenContract = new ethers.Contract(addr, myTokenAbi, signer);
+        tokenTag.textContent = "Contrat chargé";
+        tokenTag.style.background = "rgba(22,163,74,0.25)";
+        tokenTag.style.borderColor = "rgba(22,163,74,0.7)";
+        tokenTag.style.color = "#bbf7d0";
+        setStatus(tokenStatus, "MyToken prêt.", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(tokenStatus, "Erreur pendant le chargement du contrat.", "bad");
+      }
+    });
+
+    tokenInfoBtn.addEventListener("click", async () => {
+      try {
+        if (!tokenContract) return alert("Charge d'abord le contrat MyToken.");
+        const [name, symbol, decimals] = await Promise.all([
+          tokenContract.name(),
+          tokenContract.symbol(),
+          tokenContract.decimals()
+        ]);
+        setStatus(
+          tokenStatus,
+          `Nom : ${name} | Symbole : ${symbol} | Decimals : ${decimals}`,
+          "good"
+        );
+      } catch (e) {
+        console.error(e);
+        setStatus(tokenStatus, "Impossible de récupérer les infos du token.", "bad");
+      }
+    });
+
+    balanceBtn.addEventListener("click", async () => {
+      try {
+        if (!tokenContract) return alert("Charge d'abord le contrat MyToken.");
+        if (!currentAddress) await connectWallet();
+        const decimals = await tokenContract.decimals();
+        const bal = await tokenContract.balanceOf(currentAddress);
+        const human = ethers.utils.formatUnits(bal, decimals);
+        myBalanceSpan.textContent = human;
+        setStatus(tokenStatus, "Solde mis à jour.", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(tokenStatus, "Erreur en lisant le solde.", "bad");
+      }
+    });
+
+    transferBtn.addEventListener("click", async () => {
+      try {
+        if (!tokenContract) return alert("Charge d'abord le contrat MyToken.");
+        const to = document.getElementById("toAddress").value.trim();
+        const amountStr = document.getElementById("amount").value.trim();
+        if (!to || !amountStr) return alert("Adresse destinataire + montant requis.");
+        const decimals = await tokenContract.decimals();
+        const amt = ethers.utils.parseUnits(amountStr, decimals);
+        setStatus(tokenStatus, "Envoi de la transaction de transfert...");
+        const tx = await tokenContract.transfer(to, amt);
+        await tx.wait();
+        setStatus(tokenStatus, "Transfert réussi ✅", "good");
+        balanceBtn.click();
+      } catch (e) {
+        console.error(e);
+        setStatus(tokenStatus, "Erreur pendant le transfert.", "bad");
+      }
+    });
+
+    stakeBtn.addEventListener("click", async () => {
+      try {
+        if (!tokenContract) return alert("Charge d'abord le contrat MyToken.");
+        const amtStr = document.getElementById("stakeAmount").value.trim();
+        if (!amtStr) return alert("Merci de saisir un montant.");
+        const decimals = await tokenContract.decimals();
+        const amt = ethers.utils.parseUnits(amtStr, decimals);
+        setStatus(tokenStatus, "Transaction de staking en cours...");
+        const tx = await tokenContract.stake(amt);
+        await tx.wait();
+        setStatus(tokenStatus, "Stake effectué ✅", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(tokenStatus, "Erreur pendant le staking.", "bad");
+      }
+    });
+
+    unstakeBtn.addEventListener("click", async () => {
+      try {
+        if (!tokenContract) return alert("Charge d'abord le contrat MyToken.");
+        setStatus(tokenStatus, "Unstake en cours...");
+        const tx = await tokenContract.unstake();
+        await tx.wait();
+        setStatus(tokenStatus, "Unstake effectué, récompenses distribuées ✅", "good");
+        balanceBtn.click();
+      } catch (e) {
+        console.error(e);
+        setStatus(tokenStatus, "Erreur pendant l'unstake.", "bad");
+      }
+    });
+
+    // ---------- NFT (ERC-721) ----------
+    const nftAddressInput = document.getElementById("nftAddress");
+    const loadNftBtn = document.getElementById("loadNftBtn");
+    const nftAdminBtn = document.getElementById("nftAdminBtn");
+    const mintNftBtn = document.getElementById("mintNftBtn");
+    const ownerOfBtn = document.getElementById("ownerOfBtn");
+    const tokenUriBtn = document.getElementById("tokenUriBtn");
+    const nftTransferBtn = document.getElementById("nftTransferBtn");
+
+    loadNftBtn.addEventListener("click", async () => {
+      try {
+        if (!signer) await connectWallet();
+        const addr = nftAddressInput.value.trim();
+        if (!addr) return alert("Renseigne l'adresse du contrat MyNFT.");
+        nftContract = new ethers.Contract(addr, myNftAbi, signer);
+        nftTag.textContent = "Contrat chargé";
+        nftTag.style.background = "rgba(22,163,74,0.25)";
+        nftTag.style.borderColor = "rgba(22,163,74,0.7)";
+        nftTag.style.color = "#bbf7d0";
+        setStatus(nftStatus, "MyNFT prêt.", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(nftStatus, "Erreur pendant le chargement de MyNFT.", "bad");
+      }
+    });
+
+    nftAdminBtn.addEventListener("click", async () => {
+      try {
+        if (!nftContract) return alert("Charge d'abord MyNFT.");
+        const admin = await nftContract.admin();
+        setStatus(nftStatus, "Admin actuel : " + admin, "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(nftStatus, "Impossible de récupérer l'admin.", "bad");
+      }
+    });
+
+    mintNftBtn.addEventListener("click", async () => {
+      try {
+        if (!nftContract) return alert("Charge d'abord MyNFT.");
+        if (!currentAddress) await connectWallet();
+        const uri = document.getElementById("nftUri").value.trim();
+        if (!uri) return alert("Merci de saisir une URI.");
+        setStatus(nftStatus, "Mint en cours...");
+        const tx = await nftContract.mintNFT(currentAddress, uri);
+        const receipt = await tx.wait();
+        setStatus(nftStatus, "Mint effectué ✅ (regarde le dernier tokenId).", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(nftStatus, "Erreur pendant le mint.", "bad");
+      }
+    });
+
+    ownerOfBtn.addEventListener("click", async () => {
+      try {
+        if (!nftContract) return alert("Charge d'abord MyNFT.");
+        const tid = document.getElementById("nftTokenId").value.trim();
+        if (!tid) return alert("Merci de saisir un tokenId.");
+        const owner = await nftContract.ownerOf(tid);
+        setStatus(nftStatus, "Owner du token " + tid + " : " + owner, "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(nftStatus, "Impossible de lire ownerOf (tokenId valide ?).", "bad");
+      }
+    });
+
+    tokenUriBtn.addEventListener("click", async () => {
+      try {
+        if (!nftContract) return alert("Charge d'abord MyNFT.");
+        const tid = document.getElementById("nftTokenId").value.trim();
+        if (!tid) return alert("Merci de saisir un tokenId.");
+        const uri = await nftContract.tokenURI(tid);
+        setStatus(nftStatus, "URI du token " + tid + " : " + uri, "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(nftStatus, "Erreur en lisant tokenURI.", "bad");
+      }
+    });
+
+    nftTransferBtn.addEventListener("click", async () => {
+      try {
+        if (!nftContract) return alert("Charge d'abord MyNFT.");
+        if (!currentAddress) await connectWallet();
+        const to = document.getElementById("nftToAddress").value.trim();
+        const tid = document.getElementById("nftTokenId").value.trim();
+        if (!to || !tid) return alert("Adresse de destination + tokenId requis.");
+        setStatus(nftStatus, "Transfert NFT en cours...");
+        const tx = await nftContract.safeTransfer(currentAddress, to, tid);
+        await tx.wait();
+        setStatus(nftStatus, "Transfert NFT réussi ✅", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(nftStatus, "Erreur pendant le transfert NFT.", "bad");
+      }
+    });
+
+    // ---------- MARKETPLACE ----------
+    const marketAddressInput = document.getElementById("marketAddress");
+    const marketNftAddressInput = document.getElementById("marketNftAddress");
+    const loadMarketBtn = document.getElementById("loadMarketBtn");
+    const feeInfoBtn = document.getElementById("feeInfoBtn");
+    const approveMarketBtn = document.getElementById("approveMarketBtn");
+    const listBtn = document.getElementById("listBtn");
+    const viewListingBtn = document.getElementById("viewListingBtn");
+    const buyBtn = document.getElementById("buyBtn");
+
+    loadMarketBtn.addEventListener("click", async () => {
+      try {
+        if (!signer) await connectWallet();
+        const mAddr = marketAddressInput.value.trim();
+        const nAddr = marketNftAddressInput.value.trim();
+        if (!mAddr || !nAddr) return alert("Adresse marketplace + adresse MyNFT requises.");
+        marketContract = new ethers.Contract(mAddr, marketplaceAbi, signer);
+        marketNftForTrading = new ethers.Contract(nAddr, myNftAbi, signer);
+        marketTag.textContent = "Marketplace chargée";
+        marketTag.style.background = "rgba(22,163,74,0.25)";
+        marketTag.style.borderColor = "rgba(22,163,74,0.7)";
+        marketTag.style.color = "#bbf7d0";
+        setStatus(marketStatus, "Marketplace prête.", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(marketStatus, "Erreur en chargeant la marketplace.", "bad");
+      }
+    });
+
+    feeInfoBtn.addEventListener("click", async () => {
+      try {
+        if (!marketContract) return alert("Charge d'abord la marketplace.");
+        const [feeBps, recipient] = await Promise.all([
+          marketContract.feeBasisPoints(),
+          marketContract.feeRecipient()
+        ]);
+        const pct = Number(feeBps.toString()) / 100;
+        setStatus(
+          marketStatus,
+          `Commission: ${pct}% | Fee recipient: ${recipient}`,
+          "good"
+        );
+      } catch (e) {
+        console.error(e);
+        setStatus(marketStatus, "Impossible de lire les fees.", "bad");
+      }
+    });
+
+    approveMarketBtn.addEventListener("click", async () => {
+      try {
+        if (!marketNftForTrading || !marketContract)
+          return alert("Charge d'abord la marketplace et le contrat MyNFT.");
+        const tid = document.getElementById("marketTokenId").value.trim();
+        if (!tid) return alert("TokenId requis pour l'approve.");
+        const mAddr = marketAddressInput.value.trim();
+        setStatus(marketStatus, "Approve en cours...");
+        const tx = await marketNftForTrading.approve(mAddr, tid);
+        await tx.wait();
+        setStatus(marketStatus, "Approve réussi ✅", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(marketStatus, "Erreur pendant l'approve.", "bad");
+      }
+    });
+
+    listBtn.addEventListener("click", async () => {
+      try {
+        if (!marketContract || !marketNftForTrading)
+          return alert("Charge d'abord la marketplace + MyNFT.");
+        const tid = document.getElementById("marketTokenId").value.trim();
+        const priceStr = document.getElementById("marketPrice").value.trim();
+        if (!tid || !priceStr) return alert("TokenId + prix requis.");
+        const nftAddr = marketNftAddressInput.value.trim();
+        const price = ethers.utils.parseEther(priceStr);
+        setStatus(marketStatus, "Listing en cours...");
+        const tx = await marketContract.listNFT(nftAddr, tid, price);
+        await tx.wait();
+        setStatus(marketStatus, "Listing créé ✅ (vérifie listingId 0, 1, ...).", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(marketStatus, "Erreur pendant le listing.", "bad");
+      }
+    });
+
+    viewListingBtn.addEventListener("click", async () => {
+      try {
+        if (!marketContract) return alert("Charge d'abord la marketplace.");
+        const lid = document.getElementById("listingId").value.trim();
+        if (!lid) return alert("ListingId requis.");
+        const listing = await marketContract.listings(lid);
+        const priceEth = ethers.utils.formatEther(listing.price);
+        setStatus(
+          marketStatus,
+          `Listing #${lid} | seller: ${listing.seller} | tokenId: ${listing.tokenId.toString()} | prix: ${priceEth} ETH | active: ${listing.active}`,
+          "good"
+        );
+      } catch (e) {
+        console.error(e);
+        setStatus(marketStatus, "Erreur en lisant la listing.", "bad");
+      }
+    });
+
+    buyBtn.addEventListener("click", async () => {
+      try {
+        if (!marketContract) return alert("Charge d'abord la marketplace.");
+        const lid = document.getElementById("listingId").value.trim();
+        const priceStr = document.getElementById("marketPrice").value.trim();
+        if (!lid || !priceStr) return alert("ListingId + prix requis (pour value).");
+        const value = ethers.utils.parseEther(priceStr);
+        setStatus(marketStatus, "Achat en cours...");
+        const tx = await marketContract.buyNFT(lid, { value });
+        await tx.wait();
+        setStatus(marketStatus, "NFT acheté ✅", "good");
+      } catch (e) {
+        console.error(e);
+        setStatus(marketStatus, "Erreur pendant l'achat.", "bad");
+      }
+    });
+  </script>
+</body>
+</html>
