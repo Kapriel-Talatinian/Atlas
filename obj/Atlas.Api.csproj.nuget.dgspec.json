@@ -1,0 +1,321 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Api/Atlas.Api.csproj": {}
+  },
+  "projects": {
+    "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Api/Atlas.Api.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Api/Atlas.Api.csproj",
+        "projectName": "Atlas.Api",
+        "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Api/Atlas.Api.csproj",
+        "packagesPath": "/Users/kapriel.talatinian/.nuget/packages/",
+        "outputPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Api/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/kapriel.talatinian/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj": {
+                "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj"
+              },
+              "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Exchange/Atlas.Exchange.csproj": {
+                "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Exchange/Atlas.Exchange.csproj"
+              },
+              "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.ToxicFlow/Atlas.ToxicFlow.csproj": {
+                "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.ToxicFlow/Atlas.ToxicFlow.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Swashbuckle.AspNetCore": {
+              "target": "Package",
+              "version": "[6.7.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.19, 8.0.19]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.osx-arm64",
+              "version": "[8.0.19, 8.0.19]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.19, 8.0.19]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.304/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj",
+        "projectName": "Atlas.Core",
+        "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj",
+        "packagesPath": "/Users/kapriel.talatinian/.nuget/packages/",
+        "outputPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/kapriel.talatinian/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "MathNet.Numerics": {
+              "target": "Package",
+              "version": "[5.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.19, 8.0.19]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.19, 8.0.19]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.304/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Exchange/Atlas.Exchange.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Exchange/Atlas.Exchange.csproj",
+        "projectName": "Atlas.Exchange",
+        "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Exchange/Atlas.Exchange.csproj",
+        "packagesPath": "/Users/kapriel.talatinian/.nuget/packages/",
+        "outputPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Exchange/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/kapriel.talatinian/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj": {
+                "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.19, 8.0.19]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.19, 8.0.19]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.304/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.ToxicFlow/Atlas.ToxicFlow.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.ToxicFlow/Atlas.ToxicFlow.csproj",
+        "projectName": "Atlas.ToxicFlow",
+        "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.ToxicFlow/Atlas.ToxicFlow.csproj",
+        "packagesPath": "/Users/kapriel.talatinian/.nuget/packages/",
+        "outputPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.ToxicFlow/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/kapriel.talatinian/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj": {
+                "projectPath": "/Users/kapriel.talatinian/Desktop/atlas/src/Atlas.Core/Atlas.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.19, 8.0.19]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.19, 8.0.19]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.304/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
