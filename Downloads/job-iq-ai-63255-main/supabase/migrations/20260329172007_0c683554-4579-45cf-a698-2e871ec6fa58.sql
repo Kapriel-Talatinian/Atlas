@@ -1,0 +1,1 @@
+UPDATE annotation_projects SET status = 'active' WHERE id = '7a76be8e-6d7d-4f6e-99d8-a5120249243c';

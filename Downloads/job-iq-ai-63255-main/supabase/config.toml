@@ -1,0 +1,101 @@
+project_id = "iwhwhriielbpkopfoqjp"
+
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.chat-support]
+    verify_jwt = false
+  [functions.distribute-tasks]
+    verify_jwt = false
+  [functions.evaluate-test]
+    verify_jwt = false
+  [functions.export-rlhf]
+    verify_jwt = false
+  [functions.export-rlhf-gold]
+    verify_jwt = false
+  [functions.generate-blog-post]
+    verify_jwt = false
+  [functions.generate-jobs]
+    verify_jwt = false
+  [functions.generate-test]
+    verify_jwt = false
+  [functions.match-experts]
+    verify_jwt = false
+  [functions.match-jobs]
+    verify_jwt = false
+  [functions.process-annotation-payment]
+    verify_jwt = false
+  [functions.process-referral-bonus]
+    verify_jwt = false
+  [functions.process-rlhf-qa]
+    verify_jwt = false
+  [functions.qualify-annotator]
+    verify_jwt = false
+  [functions.sign-certificate]
+    verify_jwt = false
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.summarize-job]
+    verify_jwt = false
+  [functions.fb-capi]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.send-transactional-email]
+    verify_jwt = false
+  [functions.annotation-engine]
+    verify_jwt = false
+  [functions.referral-engine]
+    verify_jwt = false
+  [functions.nudge-pc-bridge]
+    verify_jwt = false
+  [functions.annotation-engine-v2]
+    verify_jwt = false
+  [functions.optimize-annotation-prompts]
+    verify_jwt = false
+  [functions.compute-krippendorff-alpha]
+    verify_jwt = false
+  [functions.assessment-certification]
+    verify_jwt = false
+  [functions.stripe-connect-onboarding]
+    verify_jwt = false
+  [functions.expert-payout]
+    verify_jwt = false
+  [functions.pricing-engine]
+    verify_jwt = false
+  [functions.fraud-detection]
+    verify_jwt = false
+  [functions.validate-upload]
+    verify_jwt = false
+  [functions.client-api]
+    verify_jwt = false
+  [functions.rlhf-email]
+    verify_jwt = false
+  [functions.payment-handler]
+    verify_jwt = false
+  [functions.qa-engine]
+    verify_jwt = false
+  [functions.health-check]
+    verify_jwt = false
+  [functions.scan-pii]
+    verify_jwt = false
+  [functions.export-dataset]
+    verify_jwt = false
+  [functions.billing-engine]
+    verify_jwt = false
+  [functions.auto-generate-article]
+    verify_jwt = false
+  [functions.compute-rlhf-stats]
+    verify_jwt = false
+  [functions.webhook-dispatch]
+    verify_jwt = false
+  [functions.manage-dataset-version]
+    verify_jwt = false
+  [functions.llm-router]
+    verify_jwt = false
+  [functions.admin-api]
+    verify_jwt = false
+  [functions.annotator-assessment]
+    verify_jwt = false
+  [functions.assessment-engine]
+    verify_jwt = false

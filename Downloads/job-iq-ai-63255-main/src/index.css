@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+
+    --card: 240 6% 97%;
+    --card-foreground: 240 10% 4%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+
+    --primary: 248 80% 68%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 248 75% 62%;
+
+    --secondary: 240 5% 93%;
+    --secondary-foreground: 240 10% 4%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --muted: 240 5% 93%;
+    --muted-foreground: 240 4% 46%;
+
+    --accent: 248 80% 68%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --info: 217 91% 60%;
+
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 248 80% 68%;
+
+    --radius: 0.5rem;
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.04);
+    --shadow-md: 0 4px 8px -2px hsl(0 0% 0% / 0.06);
+    --shadow-lg: 0 8px 24px -4px hsl(0 0% 0% / 0.08);
+
+    --surface: 240 6% 95%;
+    --surface-foreground: 240 10% 4%;
+  }
+
+  .dark {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 6% 8%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 6% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 248 80% 68%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 248 80% 73%;
+
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 0 0% 98%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --muted: 240 4% 12%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 248 80% 68%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 60% 40%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 248 80% 68%;
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 8px -2px hsl(0 0% 0% / 0.4);
+    --shadow-lg: 0 8px 24px -4px hsl(0 0% 0% / 0.5);
+
+    --surface: 240 5% 10%;
+    --surface-foreground: 0 0% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  h1 {
+    @apply text-[clamp(32px,5vw,56px)] font-extrabold tracking-[-0.035em] leading-[1.1];
+  }
+
+  h2 {
+    @apply text-[clamp(24px,3.5vw,40px)] font-bold tracking-[-0.025em] leading-[1.15];
+  }
+
+  h3 {
+    @apply text-lg font-semibold tracking-[-0.01em];
+  }
+
+  code, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13px;
+  }
+}
+
+@layer utilities {
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(248 80% 68% / 0.15), 0 0 60px hsl(248 80% 68% / 0.08);
+  }
+
+  .glow-success {
+    box-shadow: 0 0 20px hsl(142 71% 45% / 0.2), 0 0 60px hsl(142 71% 45% / 0.08);
+  }
+
+  .gradient-mesh {
+    background: 
+      radial-gradient(ellipse 80% 50% at 20% 40%, hsl(248 80% 68% / 0.06), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 20%, hsl(142 71% 45% / 0.04), transparent),
+      radial-gradient(ellipse 70% 50% at 50% 80%, hsl(248 80% 68% / 0.03), transparent);
+  }
+
+  .gradient-mesh-strong {
+    background: 
+      radial-gradient(ellipse 80% 50% at 30% 50%, hsl(248 80% 68% / 0.12), transparent),
+      radial-gradient(ellipse 60% 40% at 70% 30%, hsl(142 71% 45% / 0.06), transparent);
+  }
+}

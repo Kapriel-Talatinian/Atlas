@@ -1,0 +1,559 @@
+{# ============================================================
+   STEF — Performance Report Template (Jinja2)
+   ------------------------------------------------------------
+   Usage (Python):
+     from jinja2 import Template
+     from weasyprint import HTML
+     html = Template(open('stef_report.html.j2').read()).render(**data)
+     HTML(string=html).write_pdf('report.pdf')
+
+   Expected context variables (all required unless noted):
+     project:
+       name            str   e.g. "Évaluation qualité LLM"
+       domain_label    str   e.g. "Finance — Q1 2026"
+       client_name     str   e.g. "Confidentiel"
+       domain          str   e.g. "Finance"
+       sla_tier        str   "Standard" | "Prioritaire" | "Express"
+       issued_at       str   "12 avril 2026"
+     summary:
+       tasks_count     int
+       consensus_pct   int           # percent auto-validated, e.g. 97
+       delivery_days   int
+       sla_respected   bool
+     kpis:
+       alpha_global    float
+       tasks_count     int
+       consensus_pct   int           # "consensus direct" pct (78)
+       delivery_days   int
+       delivery_est    int
+     dimensions: list of { name, alpha, label, variant } where
+       variant ∈ "excel" | "good" | "ok"
+     sla_threshold     float (e.g. 0.80)
+     decisions:
+       auto_pct        int
+       adj_pct         int
+       rev_pct         int
+       auto_count      int
+       adj_count       int
+       rev_count       int
+     alpha_evolution   list of float (one per lot, 10-20 points)
+     experts: list of { id, tasks, alpha, time, gold_pct }
+     llm_costs:
+       items           list of { name, desc, calls, tokens, cost }
+       total_calls     int
+       total_tokens    int
+       total_cost      str (e.g. "$4.32")
+     recommendations   list of { kind, title, body, variant }
+                       variant ∈ "priority" | "opportunity" | "strength"
+     sla_checks        list of { label, value }
+     contacts:
+       commercial      str
+       dpo             str
+   ============================================================ #}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>STEF — Rapport de Performance — {{ project.domain_label }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 16mm 16mm;
+    @bottom-left {
+      content: "STEF SAS  ·  Rapport confidentiel";
+      font-family: "DejaVu Sans", sans-serif;
+      font-size: 7.5pt;
+      color: #9A9AA8;
+      letter-spacing: 0.04em;
+    }
+    @bottom-right {
+      content: "Page " counter(page) " / " counter(pages);
+      font-family: "DejaVu Sans", sans-serif;
+      font-size: 7.5pt;
+      color: #9A9AA8;
+      letter-spacing: 0.04em;
+    }
+  }
+  @page:first { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+    color: #0F0F17;
+    font-size: 9.5pt;
+    line-height: 1.5;
+  }
+
+  /* COVER */
+  .cover {
+    page-break-after: always;
+    height: 297mm; width: 210mm;
+    background: #09090B; color: #fff;
+    padding: 24mm 22mm;
+    position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ""; position: absolute;
+    top: -60mm; right: -60mm;
+    width: 180mm; height: 180mm;
+    background: radial-gradient(circle, rgba(123,111,240,0.35) 0%, rgba(123,111,240,0) 65%);
+    border-radius: 50%;
+  }
+  .cover::after {
+    content: ""; position: absolute;
+    bottom: -40mm; left: -40mm;
+    width: 140mm; height: 140mm;
+    background: radial-gradient(circle, rgba(123,111,240,0.18) 0%, rgba(123,111,240,0) 65%);
+    border-radius: 50%;
+  }
+  .cover-inner { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.12em; font-size: 11pt; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: #7B6FF0; box-shadow: 0 0 0 4px rgba(123,111,240,0.2); }
+  .tag { font-size: 7.5pt; letter-spacing: 0.18em; text-transform: uppercase; color: #A89BFF; border: 1px solid rgba(168,155,255,0.35); padding: 4px 10px; border-radius: 100px; }
+  .cover-title { margin-top: auto; }
+  .eyebrow { font-size: 8pt; letter-spacing: 0.25em; text-transform: uppercase; color: #7B6FF0; font-weight: 700; margin-bottom: 14mm; }
+  h1.cover-h { font-size: 44pt; line-height: 1.02; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8mm 0; color: #fff; }
+  h1.cover-h em { font-style: normal; color: #A89BFF; }
+  .cover-sub { font-size: 11pt; line-height: 1.55; color: #C7C7D1; max-width: 140mm; font-weight: 400; }
+  .cover-meta { margin-top: 14mm; display: flex; gap: 0; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 8mm; }
+  .cover-meta .cell { flex: 1; padding-right: 8mm; }
+  .cover-meta .label { font-size: 7.5pt; letter-spacing: 0.16em; text-transform: uppercase; color: #8A8A98; margin-bottom: 3mm; }
+  .cover-meta .val { font-size: 11pt; font-weight: 600; color: #fff; }
+  .cover-footer { position: absolute; bottom: 14mm; left: 22mm; right: 22mm; display: flex; justify-content: space-between; font-size: 8pt; color: #6B6B78; letter-spacing: 0.08em; }
+
+  /* CONTENT */
+  .section-title { font-size: 8.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: #7B6FF0; font-weight: 700; margin: 0 0 3mm 0; }
+  h2 { font-size: 18pt; font-weight: 800; letter-spacing: -0.015em; margin: 0 0 4mm 0; color: #09090B; line-height: 1.15; }
+  h3 { font-size: 11pt; font-weight: 700; margin: 0 0 3mm 0; color: #09090B; letter-spacing: -0.005em; }
+  p { margin: 0 0 3mm 0; color: #2A2A35; }
+  .muted { color: #6B6B78; }
+
+  .summary-banner { margin: 0 0 9mm 0; padding: 8mm 9mm; background: linear-gradient(135deg, #09090B 0%, #1A1625 100%); color: #fff; border-radius: 3mm; position: relative; overflow: hidden; }
+  .summary-banner::before { content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, #7B6FF0 0%, #A89BFF 100%); }
+  .summary-banner .label { font-size: 7.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: #A89BFF; font-weight: 700; margin-bottom: 3mm; }
+  .summary-banner .headline { font-size: 14pt; font-weight: 700; line-height: 1.4; color: #fff; letter-spacing: -0.005em; }
+  .summary-banner .headline strong { color: #A89BFF; font-weight: 800; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-bottom: 9mm; }
+  .kpi { padding: 6mm 5mm; background: #F7F7FA; border-radius: 2.5mm; border: 1px solid #ECECF2; position: relative; }
+  .kpi .ico { width: 6mm; height: 6mm; border-radius: 1.5mm; background: rgba(123,111,240,0.12); color: #7B6FF0; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 9pt; margin-bottom: 4mm; }
+  .kpi .val { font-size: 22pt; font-weight: 800; color: #09090B; letter-spacing: -0.025em; line-height: 1; margin-bottom: 2mm; }
+  .kpi .val .unit { font-size: 11pt; font-weight: 600; color: #6B6B78; margin-left: 1mm; }
+  .kpi .lbl { font-size: 8pt; color: #6B6B78; letter-spacing: 0.02em; }
+  .kpi.primary { background: #09090B; color: #fff; border-color: #09090B; }
+  .kpi.primary .val { color: #fff; }
+  .kpi.primary .lbl { color: #A89BFF; }
+  .kpi.primary .ico { background: rgba(123,111,240,0.25); color: #C7BEFF; }
+
+  .two-col { display: grid; grid-template-columns: 1.1fr 1fr; gap: 8mm; margin-bottom: 9mm; }
+  .card { padding: 6mm; background: #fff; border: 1px solid #ECECF2; border-radius: 2.5mm; }
+  .card h3 { margin-bottom: 4mm; }
+  .card .sub { font-size: 8pt; color: #6B6B78; margin-bottom: 5mm; margin-top: -2mm; }
+
+  .dim-row { margin-bottom: 3.5mm; }
+  .dim-row:last-child { margin-bottom: 0; }
+  .dim-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.5mm; }
+  .dim-name { font-size: 9pt; font-weight: 600; color: #09090B; }
+  .dim-val { font-size: 10pt; font-weight: 700; color: #09090B; font-variant-numeric: tabular-nums; }
+  .dim-val .tag-small { font-size: 7pt; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; margin-left: 6px; }
+  .tag-excel { background: #E8FBF1; color: #058256; }
+  .tag-good { background: #EEEBFF; color: #5B4ED1; }
+  .tag-ok { background: #FFF4DE; color: #9A6A00; }
+  .bar-track { height: 6px; background: #F0F0F5; border-radius: 100px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, #7B6FF0 0%, #A89BFF 100%); border-radius: 100px; }
+  .bar-threshold { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: #09090B; }
+  .bar-legend { display: flex; justify-content: space-between; font-size: 7pt; color: #9A9AA8; margin-top: 2mm; letter-spacing: 0.04em; }
+
+  .decision-stack { display: flex; height: 12mm; border-radius: 2mm; overflow: hidden; margin-bottom: 5mm; }
+  .decision-stack .seg { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 9pt; font-weight: 700; }
+  .seg-auto { background: #10B981; }
+  .seg-adj { background: #7B6FF0; }
+  .seg-rev { background: #F59E0B; }
+  .decision-legend { display: grid; grid-template-columns: 1fr; gap: 2.5mm; }
+  .leg-row { display: flex; align-items: center; justify-content: space-between; padding: 3mm 0; border-bottom: 1px solid #ECECF2; }
+  .leg-row:last-child { border-bottom: none; }
+  .leg-left { display: flex; align-items: center; gap: 3mm; }
+  .leg-dot { width: 3mm; height: 3mm; border-radius: 1mm; }
+  .leg-label { font-size: 9pt; font-weight: 600; color: #09090B; }
+  .leg-desc { font-size: 7.5pt; color: #6B6B78; margin-top: 0.5mm; }
+  .leg-val { font-size: 11pt; font-weight: 800; color: #09090B; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .leg-val .sub { font-size: 7.5pt; font-weight: 500; color: #6B6B78; margin-left: 3px; }
+
+  .chart-wrap { padding: 6mm; background: #fff; border: 1px solid #ECECF2; border-radius: 2.5mm; margin-bottom: 9mm; }
+  .chart-svg { width: 100%; height: 55mm; display: block; }
+
+  table.experts, table.costs { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  table.experts thead th, table.costs thead th { text-align: left; font-size: 7.5pt; letter-spacing: 0.14em; text-transform: uppercase; color: #6B6B78; font-weight: 700; padding: 0 0 3mm 0; border-bottom: 1.5px solid #09090B; }
+  table.experts tbody td, table.costs td { padding: 3.5mm 0; border-bottom: 1px solid #ECECF2; font-variant-numeric: tabular-nums; }
+  table.experts tbody tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; }
+  .expert-id { font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; font-weight: 700; background: #F0F0F5; padding: 2px 6px; border-radius: 3px; }
+  .mini-bar { display: inline-block; width: 14mm; height: 5px; background: #F0F0F5; border-radius: 100px; vertical-align: middle; margin-left: 4mm; position: relative; overflow: hidden; }
+  .mini-bar .f { position: absolute; left: 0; top: 0; bottom: 0; background: #7B6FF0; border-radius: 100px; }
+  table.costs tr.total td { border-bottom: none; border-top: 1.5px solid #09090B; font-weight: 800; font-size: 10pt; padding-top: 4mm; }
+  table.costs tr.total td.num { color: #7B6FF0; }
+
+  .reco-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-top: 3mm; margin-bottom: 4mm; }
+  .reco { padding: 4mm 4mm 4mm 6mm; border-radius: 2mm; background: #F7F7FA; position: relative; border: 1px solid #ECECF2; }
+  .reco::before { content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 3px; border-radius: 100px; }
+  .reco.r-priority::before { background: #F59E0B; }
+  .reco.r-opportunity::before { background: #7B6FF0; }
+  .reco.r-strength::before { background: #10B981; }
+  .reco .kind { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; margin-bottom: 2mm; }
+  .reco.r-priority .kind { color: #9A6A00; }
+  .reco.r-opportunity .kind { color: #5B4ED1; }
+  .reco.r-strength .kind { color: #058256; }
+  .reco h4 { margin: 0 0 1.5mm 0; font-size: 9.5pt; font-weight: 700; color: #09090B; letter-spacing: -0.005em; }
+  .reco p { margin: 0; font-size: 8pt; color: #3A3A45; line-height: 1.45; }
+
+  .sla-box { margin-top: 5mm; padding: 5mm 6mm; border-radius: 2.5mm; background: linear-gradient(135deg, #E8FBF1 0%, #D4F5E1 100%); border: 1px solid #B7EECB; display: flex; align-items: center; gap: 5mm; }
+  .sla-check { width: 14mm; height: 14mm; border-radius: 50%; background: #10B981; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20pt; font-weight: 800; flex-shrink: 0; }
+  .sla-title { font-size: 12pt; font-weight: 800; color: #04603D; margin-bottom: 1mm; }
+  .sla-list { font-size: 8.5pt; color: #04603D; line-height: 1.5; }
+  .sla-list strong { font-weight: 700; }
+
+  .divider { border: 0; border-top: 1px solid #ECECF2; margin: 6mm 0; }
+
+  .page-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 4mm; margin-bottom: 8mm; border-bottom: 1px solid #ECECF2; }
+  .page-head .brand-mini { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 9pt; letter-spacing: 0.1em; color: #09090B; }
+  .page-head .brand-mini .dot { width: 7px; height: 7px; border-radius: 50%; background: #7B6FF0; }
+  .page-head .doc-type { font-size: 7.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: #6B6B78; font-weight: 700; }
+  .page-break { page-break-before: always; }
+
+  .closing-panel { margin-top: 12mm; padding: 10mm; background: #09090B; color: #fff; border-radius: 3mm; position: relative; overflow: hidden; }
+  .closing-panel::before { content: ""; position: absolute; top: -20mm; right: -20mm; width: 70mm; height: 70mm; background: radial-gradient(circle, rgba(123,111,240,0.3) 0%, rgba(123,111,240,0) 65%); border-radius: 50%; }
+  .closing-inner { position: relative; z-index: 2; }
+  .closing-panel .closing-eyebrow { font-size: 7.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: #A89BFF; font-weight: 700; margin-bottom: 3mm; }
+  .closing-panel h3 { color: #fff; font-size: 14pt; margin-bottom: 4mm; }
+  .closing-panel p { color: #C7C7D1; font-size: 9pt; margin-bottom: 6mm; max-width: 140mm; }
+  .closing-contacts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; padding-top: 5mm; border-top: 1px solid rgba(255,255,255,0.12); }
+  .closing-contacts .ck { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; color: #8A8A98; margin-bottom: 2mm; }
+  .closing-contacts .cv { font-size: 9pt; color: #fff; font-weight: 600; }
+</style>
+</head>
+<body>
+
+{# ============ COVER ============ #}
+<div class="cover">
+  <div class="cover-inner">
+    <div class="brand-row">
+      <div class="brand"><span class="dot"></span>STEF</div>
+      <div class="tag">RLHF-as-a-Service</div>
+    </div>
+    <div class="cover-title">
+      <div class="eyebrow">Rapport de Performance</div>
+      <h1 class="cover-h">{{ project.name }}<br><em>{{ project.domain_label }}</em></h1>
+      <div class="cover-sub">
+        Synthèse complète du projet d'annotation&nbsp;: {{ "{:,}".format(summary.tasks_count).replace(",", "&nbsp;")|safe }} tâches scorées par des
+        experts certifiés, consolidées par le moteur qualité ARES et livrées
+        en {{ summary.delivery_days }} jours sur le SLA {{ project.sla_tier|lower }}.
+      </div>
+      <div class="cover-meta">
+        <div class="cell"><div class="label">Client</div><div class="val">{{ project.client_name }}</div></div>
+        <div class="cell"><div class="label">Domaine</div><div class="val">{{ project.domain }}</div></div>
+        <div class="cell"><div class="label">Niveau SLA</div><div class="val">{{ project.sla_tier }}</div></div>
+        <div class="cell"><div class="label">Émis le</div><div class="val">{{ project.issued_at }}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cover-footer">
+    <span>STEF SAS · steftalent.fr</span>
+    <span>Document confidentiel</span>
+  </div>
+</div>
+
+{# ============ PAGE 2 ============ #}
+<div class="page-head">
+  <div class="brand-mini"><span class="dot"></span>STEF</div>
+  <div class="doc-type">Rapport de Performance · {{ project.domain_label }}</div>
+</div>
+
+<div class="summary-banner">
+  <div class="label">En une ligne</div>
+  <div class="headline">
+    {{ "{:,}".format(summary.tasks_count).replace(",", "&nbsp;")|safe }} tâches annotées avec un alpha global de <strong>{{ "%.2f"|format(kpis.alpha_global) }}</strong>,
+    <strong>{{ summary.consensus_pct }}&nbsp;%</strong> validées sans intervention humaine, livrées
+    en <strong>{{ summary.delivery_days }} jours</strong> — SLA {{ project.sla_tier|lower }}
+    <strong>{{ "respecté" if summary.sla_respected else "à examiner" }}</strong>.
+  </div>
+</div>
+
+<div class="section-title">Indicateurs clés</div>
+<h2>Aperçu du projet</h2>
+
+<div class="kpi-grid">
+  <div class="kpi primary">
+    <div class="ico" style="background: rgba(168,155,255,0.25); color:#fff;">α</div>
+    <div class="val">{{ "%.2f"|format(kpis.alpha_global) }}</div>
+    <div class="lbl">Alpha Krippendorff global</div>
+  </div>
+  <div class="kpi">
+    <div class="ico">✓</div>
+    <div class="val">{{ "{:,}".format(kpis.tasks_count).replace(",", "&nbsp;")|safe }}</div>
+    <div class="lbl">Tâches validées</div>
+  </div>
+  <div class="kpi">
+    <div class="ico">%</div>
+    <div class="val">{{ kpis.consensus_pct }}<span class="unit">%</span></div>
+    <div class="lbl">Consensus direct</div>
+  </div>
+  <div class="kpi">
+    <div class="ico">⏱</div>
+    <div class="val">{{ kpis.delivery_days }}<span class="unit">j</span></div>
+    <div class="lbl">Livraison (est. {{ kpis.delivery_est }}j)</div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <h3>Fiabilité par dimension</h3>
+    <div class="sub">Alpha de Krippendorff — seuil SLA {{ project.sla_tier }}&nbsp;: {{ "%.2f"|format(sla_threshold) }}</div>
+    {% for dim in dimensions %}
+    <div class="dim-row">
+      <div class="dim-head">
+        <span class="dim-name">{{ dim.name }}</span>
+        <span class="dim-val">{{ "%.2f"|format(dim.alpha) }} <span class="tag-small tag-{{ dim.variant }}">{{ dim.label }}</span></span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width: {{ (dim.alpha * 100)|int }}%;"></div>
+        <div class="bar-threshold" style="left: {{ (sla_threshold * 100)|int }}%;"></div>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="bar-legend">
+      <span>0.60</span><span>0.70</span>
+      <span style="color:#09090B; font-weight:700;">seuil SLA {{ "%.2f"|format(sla_threshold) }}</span>
+      <span>0.90</span><span>1.00</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Décisions qualité</h3>
+    <div class="sub">Répartition des {{ "{:,}".format(kpis.tasks_count).replace(",", "&nbsp;")|safe }} tâches par le moteur ARES</div>
+    <div class="decision-stack">
+      <div class="seg seg-auto" style="flex: {{ decisions.auto_pct }};">{{ decisions.auto_pct }}%</div>
+      <div class="seg seg-adj" style="flex: {{ decisions.adj_pct }};">{{ decisions.adj_pct }}%</div>
+      <div class="seg seg-rev" style="flex: {{ decisions.rev_pct }};">{{ decisions.rev_pct }}%</div>
+    </div>
+    <div class="decision-legend">
+      <div class="leg-row">
+        <div class="leg-left"><span class="leg-dot" style="background:#10B981;"></span>
+          <div><div class="leg-label">Auto-validées</div><div class="leg-desc">Consensus direct, α ≥ {{ "%.2f"|format(sla_threshold) }}</div></div>
+        </div>
+        <div class="leg-val">{{ "{:,}".format(decisions.auto_count).replace(",", "&nbsp;")|safe }} <span class="sub">tâches</span></div>
+      </div>
+      <div class="leg-row">
+        <div class="leg-left"><span class="leg-dot" style="background:#7B6FF0;"></span>
+          <div><div class="leg-label">Adjudication LLM</div><div class="leg-desc">Désaccord résolu par Tier 3</div></div>
+        </div>
+        <div class="leg-val">{{ "{:,}".format(decisions.adj_count).replace(",", "&nbsp;")|safe }} <span class="sub">tâches</span></div>
+      </div>
+      <div class="leg-row">
+        <div class="leg-left"><span class="leg-dot" style="background:#F59E0B;"></span>
+          <div><div class="leg-label">Révision humaine</div><div class="leg-desc">α &lt; 0.67, expert senior</div></div>
+        </div>
+        <div class="leg-val">{{ "{:,}".format(decisions.rev_count).replace(",", "&nbsp;")|safe }} <span class="sub">tâches</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ============ PAGE 3 — Evolution + experts ============ #}
+<div class="page-break"></div>
+<div class="page-head">
+  <div class="brand-mini"><span class="dot"></span>STEF</div>
+  <div class="doc-type">Rapport de Performance · {{ project.domain_label }}</div>
+</div>
+
+<div class="section-title">Trajectoire qualité</div>
+<h2>Évolution de l'alpha dans le temps</h2>
+<p class="muted" style="margin-bottom: 5mm;">Alpha mesuré lot par lot sur les {{ alpha_evolution|length }} batches du projet. La ligne pointillée marque le seuil contractuel de {{ "%.2f"|format(sla_threshold) }}.</p>
+
+<div class="chart-wrap">
+  <svg class="chart-svg" viewBox="0 0 700 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    {# Grid lines #}
+    <g stroke="#ECECF2" stroke-width="1">
+      <line x1="50" y1="20"  x2="680" y2="20"/>
+      <line x1="50" y1="65"  x2="680" y2="65"/>
+      <line x1="50" y1="110" x2="680" y2="110"/>
+      <line x1="50" y1="155" x2="680" y2="155"/>
+      <line x1="50" y1="200" x2="680" y2="200"/>
+    </g>
+    <g font-family="DejaVu Sans" font-size="10" fill="#9A9AA8">
+      <text x="40" y="23" text-anchor="end">1.00</text>
+      <text x="40" y="68" text-anchor="end">0.90</text>
+      <text x="40" y="113" text-anchor="end">0.80</text>
+      <text x="40" y="158" text-anchor="end">0.70</text>
+      <text x="40" y="203" text-anchor="end">0.60</text>
+    </g>
+
+    {# SLA threshold at y = 20 + (1 - threshold) * 450 in the 20..200 range for 1.00..0.60 #}
+    {% set n = alpha_evolution|length %}
+    {% set x0 = 60 %}
+    {% set x1 = 670 %}
+    {% set step = (x1 - x0) / (n - 1) if n > 1 else 0 %}
+    {% set sla_y = (20 + (1.00 - sla_threshold) * 450)|round(1) %}
+
+    <line x1="50" y1="{{ sla_y }}" x2="680" y2="{{ sla_y }}" stroke="#09090B" stroke-width="1.2" stroke-dasharray="4 3"/>
+    <text x="670" y="{{ sla_y - 5 }}" text-anchor="end" font-family="DejaVu Sans" font-size="9" font-weight="700" fill="#09090B">SLA {{ "%.2f"|format(sla_threshold) }}</text>
+
+    <defs>
+      <linearGradient id="areaGrad" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#7B6FF0" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#7B6FF0" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+
+    {# Area under curve #}
+    <path d="
+      {%- for a in alpha_evolution -%}
+        {%- set x = (x0 + loop.index0 * step)|round(2) -%}
+        {%- set y = (20 + (1.00 - a) * 450)|round(2) -%}
+        {{- 'M ' if loop.first else ' L ' }}{{ x }},{{ y }}
+      {%- endfor -%}
+      {%- set last_x = (x0 + (n - 1) * step)|round(2) -%}
+      {{ ' L ' ~ last_x ~ ',200 L ' ~ x0 ~ ',200 Z' }}
+    " fill="url(#areaGrad)" opacity="0.5"/>
+
+    {# Line #}
+    <path d="
+      {%- for a in alpha_evolution -%}
+        {%- set x = (x0 + loop.index0 * step)|round(2) -%}
+        {%- set y = (20 + (1.00 - a) * 450)|round(2) -%}
+        {{- 'M ' if loop.first else ' L ' }}{{ x }},{{ y }}
+      {%- endfor -%}
+    " fill="none" stroke="#7B6FF0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    {# Points #}
+    <g fill="#fff" stroke="#7B6FF0" stroke-width="2">
+      {% for a in alpha_evolution -%}
+      {%- set x = (x0 + loop.index0 * step)|round(2) -%}
+      {%- set y = (20 + (1.00 - a) * 450)|round(2) -%}
+      <circle cx="{{ x }}" cy="{{ y }}" r="{{ 4.5 if loop.last else 3.5 }}"{% if loop.last %} fill="#7B6FF0"{% endif %}/>
+      {% endfor %}
+    </g>
+
+    {# X labels (every 2nd lot + last) #}
+    <g font-family="DejaVu Sans" font-size="9" fill="#9A9AA8">
+      {% for a in alpha_evolution -%}
+      {%- if loop.index0 is divisibleby 2 or loop.last -%}
+      {%- set x = (x0 + loop.index0 * step)|round(2) -%}
+      <text x="{{ x }}" y="218" text-anchor="middle">L{{ loop.index }}</text>
+      {%- endif %}
+      {% endfor %}
+    </g>
+  </svg>
+</div>
+
+<div class="section-title">Équipe d'annotation</div>
+<h2>Performance des experts</h2>
+<p class="muted" style="margin-bottom: 5mm;">Identifiants anonymisés pour confidentialité. {{ experts|length }} experts certifiés {{ project.domain }}, ≥ 2 annotateurs par tâche.</p>
+
+<table class="experts">
+  <thead>
+    <tr>
+      <th>Expert</th>
+      <th class="num">Tâches</th>
+      <th class="num">Alpha individuel</th>
+      <th class="num">Temps moyen</th>
+      <th class="num">Gold tasks</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for exp in experts %}
+    <tr>
+      <td><span class="expert-id">{{ exp.id }}</span></td>
+      <td class="num">{{ exp.tasks }}</td>
+      <td class="num"><strong>{{ "%.2f"|format(exp.alpha) }}</strong><span class="mini-bar"><span class="f" style="width:{{ (exp.alpha * 100)|int }}%;"></span></span></td>
+      <td class="num">{{ exp.time }}</td>
+      <td class="num">{{ exp.gold_pct }}%</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{# ============ PAGE 4 — Costs + reco ============ #}
+<div class="page-break"></div>
+<div class="page-head">
+  <div class="brand-mini"><span class="dot"></span>STEF</div>
+  <div class="doc-type">Rapport de Performance · {{ project.domain_label }}</div>
+</div>
+
+<div class="section-title">Transparence</div>
+<h2>Coûts LLM détaillés</h2>
+<p class="muted" style="margin-bottom: 5mm;">Inclus dans le prix du projet. Détail fourni à titre informatif pour votre conformité article&nbsp;11 de l'AI&nbsp;Act.</p>
+
+<table class="costs">
+  <thead>
+    <tr>
+      <th style="width: 50%;">Usage</th>
+      <th class="num">Appels</th>
+      <th class="num">Tokens</th>
+      <th class="num">Coût</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in llm_costs['items'] %}
+    <tr>
+      <td>
+        <strong>{{ item.name }}</strong>
+        <div style="font-size:7.5pt; color:#6B6B78; margin-top:1mm;">{{ item.desc }}</div>
+      </td>
+      <td class="num">{{ "{:,}".format(item.calls).replace(",", "&nbsp;")|safe }}</td>
+      <td class="num">{{ "{:,}".format(item.tokens).replace(",", "&nbsp;")|safe }}</td>
+      <td class="num">{{ item.cost }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="total">
+      <td>Total</td>
+      <td class="num">{{ "{:,}".format(llm_costs.total_calls).replace(",", "&nbsp;")|safe }}</td>
+      <td class="num">{{ "{:,}".format(llm_costs.total_tokens).replace(",", "&nbsp;")|safe }}</td>
+      <td class="num">{{ llm_costs.total_cost }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="divider">
+
+<div class="section-title">Conseils</div>
+<h2>Recommandations d'amélioration</h2>
+<p class="muted" style="margin-bottom: 2mm; font-size: 9pt;">Axes identifiés à partir de l'analyse de vos {{ "{:,}".format(kpis.tasks_count).replace(",", "&nbsp;")|safe }} tâches.</p>
+
+<div class="reco-grid">
+  {% for r in recommendations %}
+  <div class="reco r-{{ r.variant }}">
+    <div class="kind">{{ r.kind }}</div>
+    <h4>{{ r.title }}</h4>
+    <p>{{ r.body }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+{# ============ PAGE 5 — SLA + closing ============ #}
+<div class="sla-box">
+  <div class="sla-check">{{ "✓" if summary.sla_respected else "!" }}</div>
+  <div>
+    <div class="sla-title">SLA {{ project.sla_tier }} {{ "respecté" if summary.sla_respected else "à examiner" }}</div>
+    <div class="sla-list">
+      {% for check in sla_checks %}<strong>{{ check.label }}&nbsp;:</strong> {{ check.value }}{% if not loop.last %} &nbsp;·&nbsp; {% endif %}{% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="closing-panel">
+  <div class="closing-inner">
+    <div class="closing-eyebrow">Prochaines étapes</div>
+    <h3>Votre dataset est prêt à être exploité</h3>
+    <p>Le livrable complet au format JSONL est disponible dans votre espace client, accompagné des métadonnées HuggingFace. Une revue de projet peut être planifiée pour discuter des recommandations ci-dessus.</p>
+    <div class="closing-contacts">
+      <div><div class="ck">Commercial</div><div class="cv">{{ contacts.commercial }}</div></div>
+      <div><div class="ck">RGPD / DPO</div><div class="cv">{{ contacts.dpo }}</div></div>
+      <div><div class="ck">Référentiels</div><div class="cv">Krippendorff · AI Act · RGPD</div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,422 @@
+{# ============================================================
+   STEF — Dataset Deliverable Template (Jinja2)
+   ------------------------------------------------------------
+   Usage (Python):
+     from jinja2 import Template
+     from weasyprint import HTML
+     html = Template(open('stef_dataset.html.j2').read()).render(**data)
+     HTML(string=html).write_pdf('dataset.pdf')
+
+   Expected context variables:
+     project:
+       domain_label    str   e.g. "Finance Q1 2026"
+       domain          str   e.g. "Finance" | "Medical" | "Legal" | "Code"
+       format          str   e.g. "JSONL"
+       alpha_global    float
+       sla_tier        str   e.g. "Prioritaire"
+     summary:
+       tasks_count     int
+       min_experts     int   default 2
+     kpis:
+       tasks_count     int
+       alpha_global    float
+       format          str
+       format_compat   str   e.g. "HF" (HuggingFace compatible)
+     usages: list of { step, kind, title, body }   # 3 recommended
+     schema_fields: list of {
+         name, type_label, type_variant, description
+     }   # type_variant ∈ "string" | "float" | "object" | "array"
+     example:
+       task_type_label str   e.g. "Scoring · Finance"
+       format_badge    str   e.g. "JSONL"
+       json_lines      str   pre-formatted HTML-escaped JSON string (with spans)
+                             OR pass raw dict in example.data and let the template render
+       data            dict (optional alternative to json_lines)
+     task_types: list of { title, tag, variant, fields: [{name, desc}] }
+                 variant ∈ 1..4 (visual color)
+     metadata: list of { key, value }
+     guarantee:
+       min_experts     int
+       min_alpha       float
+     usage_tips: list of { kind, title, body, variant }
+                 variant ∈ "info" | "warn" | "ok"
+     contacts:
+       support         str
+       dpo             str
+       docs            str
+   ============================================================ #}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>STEF — Dataset Annoté — {{ project.domain_label }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 16mm 16mm;
+    @bottom-left {
+      content: "STEF SAS  ·  Document confidentiel  ·  Usage exclusif du client";
+      font-family: "DejaVu Sans", sans-serif; font-size: 7.5pt; color: #9A9AA8; letter-spacing: 0.04em;
+    }
+    @bottom-right {
+      content: "Page " counter(page) " / " counter(pages);
+      font-family: "DejaVu Sans", sans-serif; font-size: 7.5pt; color: #9A9AA8; letter-spacing: 0.04em;
+    }
+  }
+  @page:first { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+    color: #0F0F17; font-size: 9.5pt; line-height: 1.5;
+  }
+
+  /* COVER */
+  .cover { page-break-after: always; height: 297mm; width: 210mm; background: #09090B; color: #fff; padding: 24mm 22mm; position: relative; overflow: hidden; }
+  .cover::before { content: ""; position: absolute; top: -60mm; right: -60mm; width: 180mm; height: 180mm; background: radial-gradient(circle, rgba(123,111,240,0.35) 0%, rgba(123,111,240,0) 65%); border-radius: 50%; }
+  .cover::after { content: ""; position: absolute; bottom: -40mm; left: -40mm; width: 140mm; height: 140mm; background: radial-gradient(circle, rgba(123,111,240,0.18) 0%, rgba(123,111,240,0) 65%); border-radius: 50%; }
+  .cover-inner { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.12em; font-size: 11pt; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: #7B6FF0; box-shadow: 0 0 0 4px rgba(123,111,240,0.2); }
+  .tag { font-size: 7.5pt; letter-spacing: 0.18em; text-transform: uppercase; color: #10B981; border: 1px solid rgba(16,185,129,0.45); padding: 4px 10px; border-radius: 100px; background: rgba(16,185,129,0.08); }
+  .cover-title { margin-top: auto; }
+  .eyebrow { font-size: 8pt; letter-spacing: 0.25em; text-transform: uppercase; color: #7B6FF0; font-weight: 700; margin-bottom: 14mm; }
+  h1.cover-h { font-size: 40pt; line-height: 1.02; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8mm 0; color: #fff; }
+  h1.cover-h em { font-style: normal; color: #A89BFF; }
+  .cover-sub { font-size: 11pt; line-height: 1.55; color: #C7C7D1; max-width: 140mm; font-weight: 400; }
+  .cover-meta { margin-top: 14mm; display: flex; gap: 0; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 8mm; }
+  .cover-meta .cell { flex: 1; padding-right: 8mm; }
+  .cover-meta .label { font-size: 7.5pt; letter-spacing: 0.16em; text-transform: uppercase; color: #8A8A98; margin-bottom: 3mm; }
+  .cover-meta .val { font-size: 11pt; font-weight: 600; color: #fff; }
+  .cover-meta .val code { font-family: "DejaVu Sans Mono", monospace; font-size: 9.5pt; background: rgba(123,111,240,0.18); color: #C7BEFF; padding: 2px 6px; border-radius: 3px; }
+  .cover-footer { position: absolute; bottom: 14mm; left: 22mm; right: 22mm; display: flex; justify-content: space-between; font-size: 8pt; color: #6B6B78; letter-spacing: 0.08em; }
+
+  /* CONTENT */
+  .section-title { font-size: 8.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: #7B6FF0; font-weight: 700; margin: 0 0 3mm 0; }
+  h2 { font-size: 18pt; font-weight: 800; letter-spacing: -0.015em; margin: 0 0 4mm 0; color: #09090B; line-height: 1.15; }
+  h3 { font-size: 11pt; font-weight: 700; margin: 0 0 3mm 0; color: #09090B; letter-spacing: -0.005em; }
+  p { margin: 0 0 3mm 0; color: #2A2A35; }
+  .muted { color: #6B6B78; }
+
+  .summary-banner { margin: 0 0 9mm 0; padding: 8mm 9mm; background: linear-gradient(135deg, #09090B 0%, #1A1625 100%); color: #fff; border-radius: 3mm; position: relative; overflow: hidden; }
+  .summary-banner::before { content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, #7B6FF0 0%, #A89BFF 100%); }
+  .summary-banner .label { font-size: 7.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: #A89BFF; font-weight: 700; margin-bottom: 3mm; }
+  .summary-banner .headline { font-size: 14pt; font-weight: 700; line-height: 1.4; color: #fff; letter-spacing: -0.005em; }
+  .summary-banner .headline strong { color: #A89BFF; font-weight: 800; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-bottom: 9mm; }
+  .kpi { padding: 6mm 5mm; background: #F7F7FA; border-radius: 2.5mm; border: 1px solid #ECECF2; }
+  .kpi .ico { width: 6mm; height: 6mm; border-radius: 1.5mm; background: rgba(123,111,240,0.12); color: #7B6FF0; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 9pt; margin-bottom: 4mm; }
+  .kpi .val { font-size: 22pt; font-weight: 800; color: #09090B; letter-spacing: -0.025em; line-height: 1; margin-bottom: 2mm; }
+  .kpi .val code { font-family: "DejaVu Sans Mono", monospace; font-size: 16pt; }
+  .kpi .lbl { font-size: 8pt; color: #6B6B78; }
+  .kpi.primary { background: #09090B; color: #fff; border-color: #09090B; }
+  .kpi.primary .val { color: #fff; }
+  .kpi.primary .lbl { color: #A89BFF; }
+  .kpi.primary .ico { background: rgba(123,111,240,0.25); color: #C7BEFF; }
+
+  .page-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 4mm; margin-bottom: 8mm; border-bottom: 1px solid #ECECF2; }
+  .page-head .brand-mini { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 9pt; letter-spacing: 0.1em; color: #09090B; }
+  .page-head .brand-mini .dot { width: 7px; height: 7px; border-radius: 50%; background: #7B6FF0; }
+  .page-head .doc-type { font-size: 7.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: #6B6B78; font-weight: 700; }
+
+  .usage-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-bottom: 8mm; }
+  .usage-card { padding: 5mm; background: #F7F7FA; border: 1px solid #ECECF2; border-radius: 2.5mm; position: relative; }
+  .usage-card .step { position: absolute; top: 4mm; right: 4mm; font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; font-weight: 700; color: #A89BFF; letter-spacing: 0.05em; }
+  .usage-card .kind { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; color: #7B6FF0; font-weight: 700; margin-bottom: 3mm; }
+  .usage-card h4 { margin: 0 0 2mm 0; font-size: 10pt; font-weight: 700; color: #09090B; letter-spacing: -0.005em; }
+  .usage-card p { font-size: 8pt; color: #3A3A45; line-height: 1.45; margin: 0; }
+  .usage-card code { display: inline-block; font-family: "DejaVu Sans Mono", monospace; font-size: 7.5pt; background: rgba(123,111,240,0.1); color: #5B4ED1; padding: 1px 5px; border-radius: 3px; }
+
+  table.schema { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 8mm; }
+  table.schema thead th { text-align: left; font-size: 7.5pt; letter-spacing: 0.14em; text-transform: uppercase; color: #6B6B78; font-weight: 700; padding: 0 0 3mm 0; border-bottom: 1.5px solid #09090B; }
+  table.schema tbody td { padding: 2.5mm 0; border-bottom: 1px solid #ECECF2; vertical-align: top; }
+  table.schema tbody tr:last-child td { border-bottom: none; }
+  .field-name { font-family: "DejaVu Sans Mono", monospace; font-weight: 700; font-size: 9pt; color: #09090B; }
+  .field-type { display: inline-block; font-family: "DejaVu Sans Mono", monospace; font-size: 7.5pt; font-weight: 600; padding: 2px 6px; border-radius: 3px; }
+  .field-type.t-string { background: #EEEBFF; color: #5B4ED1; }
+  .field-type.t-float { background: #E8FBF1; color: #058256; }
+  .field-type.t-object { background: #FFF4DE; color: #9A6A00; }
+  .field-type.t-array { background: #FCE7F3; color: #9D174D; }
+  .field-desc { font-size: 8.5pt; color: #3A3A45; line-height: 1.45; }
+  .field-desc code { background: rgba(123,111,240,0.08); color: #5B4ED1; padding: 1px 4px; border-radius: 3px; font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; }
+
+  .code-block { background: #09090B; color: #E4E4EC; border-radius: 2.5mm; padding: 6mm 7mm; font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; line-height: 1.6; margin-bottom: 8mm; position: relative; overflow: hidden; }
+  .code-block .caption { font-family: "DejaVu Sans", sans-serif; font-size: 7.5pt; letter-spacing: 0.18em; text-transform: uppercase; color: #A89BFF; font-weight: 700; margin-bottom: 4mm; display: flex; justify-content: space-between; align-items: center; }
+  .code-block .caption .fmt { font-family: "DejaVu Sans Mono", monospace; background: rgba(123,111,240,0.2); color: #C7BEFF; padding: 2px 8px; border-radius: 3px; letter-spacing: 0.05em; font-weight: 600; font-size: 7pt; }
+  .code-block pre { margin: 0; white-space: pre; font-family: "DejaVu Sans Mono", monospace; }
+  .tok-key { color: #A89BFF; }
+  .tok-str { color: #86EFAC; }
+  .tok-num { color: #FDBA74; }
+  .tok-pun { color: #6B6B78; }
+
+  .tasktype-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-bottom: 6mm; }
+  .tt-card { padding: 4mm; background: #fff; border: 1px solid #ECECF2; border-radius: 2.5mm; position: relative; overflow: hidden; }
+  .tt-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .tt-card.ttc-1::before { background: #7B6FF0; }
+  .tt-card.ttc-2::before { background: #F59E0B; }
+  .tt-card.ttc-3::before { background: #10B981; }
+  .tt-card.ttc-4::before { background: #EC4899; }
+  .tt-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3mm; padding-bottom: 3mm; border-bottom: 1px solid #ECECF2; }
+  .tt-head h3 { margin: 0; }
+  .tt-tag { font-family: "DejaVu Sans Mono", monospace; font-size: 7.5pt; font-weight: 700; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.02em; }
+  .tt-card.ttc-1 .tt-tag { background: #EEEBFF; color: #5B4ED1; }
+  .tt-card.ttc-2 .tt-tag { background: #FFF4DE; color: #9A6A00; }
+  .tt-card.ttc-3 .tt-tag { background: #E8FBF1; color: #058256; }
+  .tt-card.ttc-4 .tt-tag { background: #FCE7F3; color: #9D174D; }
+  .tt-fields { list-style: none; padding: 0; margin: 0; }
+  .tt-fields li { padding: 2mm 0; border-bottom: 1px dashed #ECECF2; display: flex; font-size: 8.5pt; }
+  .tt-fields li:last-child { border-bottom: none; }
+  .tt-fields .fn { font-family: "DejaVu Sans Mono", monospace; font-weight: 700; color: #09090B; min-width: 32mm; flex-shrink: 0; font-size: 8pt; }
+  .tt-fields .fd { color: #3A3A45; font-size: 8pt; line-height: 1.4; }
+  .tt-fields code { background: rgba(123,111,240,0.08); color: #5B4ED1; padding: 1px 3px; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 7pt; }
+
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 4mm; padding: 4mm 5mm; background: #F7F7FA; border: 1px solid #ECECF2; border-radius: 2.5mm; margin-bottom: 5mm; page-break-inside: avoid; }
+  .meta-item { display: flex; justify-content: space-between; align-items: baseline; padding: 1.5mm 0; border-bottom: 1px solid #ECECF2; }
+  .meta-grid .meta-item:nth-last-child(-n+2) { border-bottom: none; }
+  .meta-key { font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; color: #6B6B78; font-weight: 600; }
+  .meta-val { font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; font-weight: 700; color: #09090B; }
+
+  .guarantee { margin-top: 5mm; padding: 5mm 6mm; border-radius: 2.5mm; background: linear-gradient(135deg, #E8FBF1 0%, #D4F5E1 100%); border: 1px solid #B7EECB; display: flex; align-items: center; gap: 5mm; page-break-inside: avoid; }
+  .guarantee-ico { width: 14mm; height: 14mm; border-radius: 50%; background: #10B981; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20pt; font-weight: 800; flex-shrink: 0; }
+  .guarantee-title { font-size: 12pt; font-weight: 800; color: #04603D; margin-bottom: 1.5mm; }
+  .guarantee-text { font-size: 8.5pt; color: #04603D; line-height: 1.5; }
+  .guarantee-text strong { font-weight: 700; }
+
+  .tip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-bottom: 8mm; }
+  .tip { padding: 5mm 5mm 5mm 7mm; background: #F7F7FA; border: 1px solid #ECECF2; border-radius: 2mm; position: relative; }
+  .tip::before { content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 3px; border-radius: 100px; }
+  .tip.v-info::before { background: #7B6FF0; }
+  .tip.v-warn::before { background: #F59E0B; }
+  .tip.v-ok::before { background: #10B981; }
+  .tip .kind { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; margin-bottom: 2mm; }
+  .tip.v-info .kind { color: #5B4ED1; }
+  .tip.v-warn .kind { color: #9A6A00; }
+  .tip.v-ok .kind { color: #058256; }
+  .tip h4 { margin: 0 0 1.5mm 0; font-size: 9.5pt; font-weight: 700; color: #09090B; letter-spacing: -0.005em; }
+  .tip p { margin: 0; font-size: 8pt; color: #3A3A45; line-height: 1.45; }
+  .tip code { background: rgba(123,111,240,0.1); color: #5B4ED1; padding: 1px 4px; border-radius: 3px; font-family: "DejaVu Sans Mono", monospace; font-size: 7.5pt; }
+
+  .closing-panel { padding: 10mm; background: #09090B; color: #fff; border-radius: 3mm; position: relative; overflow: hidden; }
+  .closing-panel::before { content: ""; position: absolute; top: -20mm; right: -20mm; width: 70mm; height: 70mm; background: radial-gradient(circle, rgba(123,111,240,0.3) 0%, rgba(123,111,240,0) 65%); border-radius: 50%; }
+  .closing-inner { position: relative; z-index: 2; }
+  .closing-panel .closing-eyebrow { font-size: 7.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: #A89BFF; font-weight: 700; margin-bottom: 3mm; }
+  .closing-panel h3 { color: #fff; font-size: 14pt; margin-bottom: 4mm; }
+  .closing-panel p { color: #C7C7D1; font-size: 9pt; margin-bottom: 6mm; max-width: 140mm; }
+  .closing-contacts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; padding-top: 5mm; border-top: 1px solid rgba(255,255,255,0.12); }
+  .closing-contacts .ck { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; color: #8A8A98; margin-bottom: 2mm; }
+  .closing-contacts .cv { font-size: 9pt; color: #fff; font-weight: 600; }
+
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+{# ============ COVER ============ #}
+<div class="cover">
+  <div class="cover-inner">
+    <div class="brand-row">
+      <div class="brand"><span class="dot"></span>STEF</div>
+      <div class="tag">✓ Livré</div>
+    </div>
+    <div class="cover-title">
+      <div class="eyebrow">Livrable final · Dataset annoté</div>
+      <h1 class="cover-h">{{ "{:,}".format(summary.tasks_count).replace(",", "&nbsp;")|safe }} tâches <em>prêtes à entraîner.</em></h1>
+      <div class="cover-sub">
+        Votre dataset {{ project.domain|lower }} annoté par des experts certifiés et validé par le moteur qualité ARES.
+        Livré au format {{ project.format }} avec métadonnées HuggingFace, prêt à être injecté dans votre pipeline
+        de fine-tuning ou d'évaluation.
+      </div>
+      <div class="cover-meta">
+        <div class="cell"><div class="label">Projet</div><div class="val">{{ project.domain_label }}</div></div>
+        <div class="cell"><div class="label">Format</div><div class="val"><code>{{ project.format }}</code></div></div>
+        <div class="cell"><div class="label">Alpha</div><div class="val">{{ "%.2f"|format(project.alpha_global) }}</div></div>
+        <div class="cell"><div class="label">SLA</div><div class="val">{{ project.sla_tier }}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cover-footer">
+    <span>STEF SAS · steftalent.fr</span>
+    <span>Usage exclusif du client</span>
+  </div>
+</div>
+
+{# ============ PAGE 2 — Summary + KPIs + Usage ============ #}
+<div class="page-head">
+  <div class="brand-mini"><span class="dot"></span>STEF</div>
+  <div class="doc-type">Dataset Annoté · {{ project.domain_label }}</div>
+</div>
+
+<div class="summary-banner">
+  <div class="label">En une ligne</div>
+  <div class="headline">
+    Un dataset de <strong>{{ "{:,}".format(summary.tasks_count).replace(",", "&nbsp;")|safe }} exemples</strong> scorés par au minimum <strong>{{ summary.min_experts }} experts certifiés</strong>,
+    consolidés avec un alpha de Krippendorff de <strong>{{ "%.2f"|format(project.alpha_global) }}</strong> et livré au format
+    <strong>{{ project.format }} + HuggingFace</strong> — prêt à l'usage.
+  </div>
+</div>
+
+<div class="section-title">Aperçu du livrable</div>
+<h2>Votre dataset en chiffres</h2>
+
+<div class="kpi-grid">
+  <div class="kpi primary">
+    <div class="ico" style="background: rgba(168,155,255,0.25); color:#fff;">#</div>
+    <div class="val">{{ "{:,}".format(kpis.tasks_count).replace(",", "&nbsp;")|safe }}</div>
+    <div class="lbl">Tâches validées</div>
+  </div>
+  <div class="kpi">
+    <div class="ico">α</div>
+    <div class="val">{{ "%.2f"|format(kpis.alpha_global) }}</div>
+    <div class="lbl">Alpha Krippendorff</div>
+  </div>
+  <div class="kpi">
+    <div class="ico">{ }</div>
+    <div class="val"><code>{{ kpis.format }}</code></div>
+    <div class="lbl">Format principal</div>
+  </div>
+  <div class="kpi">
+    <div class="ico">🤗</div>
+    <div class="val"><code>{{ kpis.format_compat }}</code></div>
+    <div class="lbl">Compatible datasets</div>
+  </div>
+</div>
+
+<div class="section-title">Mode d'emploi</div>
+<h2>Comment exploiter ce dataset</h2>
+<p class="muted" style="margin-bottom: 4mm; font-size: 9pt;">{{ usages|length }} usages principaux, du plus simple au plus avancé.</p>
+
+<div class="usage-grid">
+  {% for u in usages %}
+  <div class="usage-card">
+    <div class="step">{{ "%02d"|format(loop.index) }}</div>
+    <div class="kind">{{ u.kind }}</div>
+    <h4>{{ u.title }}</h4>
+    <p>{{ u.body|safe }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+{# ============ PAGE 3 — Schema + Example ============ #}
+<div class="page-break"></div>
+<div class="page-head">
+  <div class="brand-mini"><span class="dot"></span>STEF</div>
+  <div class="doc-type">Dataset Annoté · {{ project.domain_label }}</div>
+</div>
+
+<div class="section-title">Structure des données</div>
+<h2>Schéma du dataset</h2>
+<p class="muted" style="margin-bottom: 5mm; font-size: 9pt;">Chaque ligne du fichier {{ project.format }} contient une tâche annotée et validée par le moteur qualité ARES. Les champs optionnels dépendent du type de tâche (cf. page suivante).</p>
+
+<table class="schema">
+  <thead>
+    <tr><th style="width: 22%;">Champ</th><th style="width: 13%;">Type</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    {% for f in schema_fields %}
+    <tr>
+      <td><span class="field-name">{{ f.name }}</span></td>
+      <td><span class="field-type t-{{ f.type_variant }}">{{ f.type_label }}</span></td>
+      <td class="field-desc">{{ f.description|safe }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="section-title">Exemple réel</div>
+<h2>Une ligne du dataset</h2>
+
+<div class="code-block">
+  <div class="caption">
+    <span>{{ example.task_type_label }}</span>
+    <span class="fmt">{{ example.format_badge }}</span>
+  </div>
+<pre>{{ example.json_lines|safe }}</pre>
+</div>
+
+{# ============ PAGE 4 — Task types + metadata ============ #}
+<div class="page-break"></div>
+<div class="page-head">
+  <div class="brand-mini"><span class="dot"></span>STEF</div>
+  <div class="doc-type">Dataset Annoté · {{ project.domain_label }}</div>
+</div>
+
+<div class="section-title">Flexibilité</div>
+<h2>Format selon le type de tâche</h2>
+<p class="muted" style="margin-bottom: 4mm; font-size: 9pt;">Le schéma s'adapte automatiquement au type d'annotation. Voici les {{ task_types|length }} formats principaux supportés par STEF.</p>
+
+<div class="tasktype-grid">
+  {% for tt in task_types %}
+  <div class="tt-card ttc-{{ tt.variant }}">
+    <div class="tt-head">
+      <h3>{{ tt.title }}</h3>
+      <span class="tt-tag">{{ tt.tag }}</span>
+    </div>
+    <ul class="tt-fields">
+      {% for field in tt.fields %}
+      <li><span class="fn">{{ field.name }}</span><span class="fd">{{ field.desc|safe }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="section-title">Métadonnées HuggingFace</div>
+<h2>Intégration prête à l'emploi</h2>
+<p class="muted" style="margin-bottom: 3mm; font-size: 9pt;">Les métadonnées ci-dessous sont incluses automatiquement avec le livrable au format <code>datasets</code>.</p>
+
+<div class="meta-grid">
+  {% for m in metadata %}
+  <div class="meta-item"><span class="meta-key">{{ m.key }}</span><span class="meta-val">{{ m.value }}</span></div>
+  {% endfor %}
+</div>
+
+<div class="guarantee">
+  <div class="guarantee-ico">✓</div>
+  <div>
+    <div class="guarantee-title">Garantie qualité STEF</div>
+    <div class="guarantee-text">
+      Chaque ligne a été annotée par <strong>au minimum {{ guarantee.min_experts }} experts certifiés</strong> et validée par le
+      moteur ARES (<strong>Alpha de Krippendorff ≥ {{ "%.2f"|format(guarantee.min_alpha) }}</strong>). Méthode conforme Krippendorff (2018).
+    </div>
+  </div>
+</div>
+
+{# ============ PAGE 5 — Usage tips + closing ============ #}
+<div class="page-break"></div>
+<div class="page-head">
+  <div class="brand-mini"><span class="dot"></span>STEF</div>
+  <div class="doc-type">Dataset Annoté · {{ project.domain_label }}</div>
+</div>
+
+<div class="section-title">Conseils d'utilisation</div>
+<h2>Recommandations pour votre pipeline</h2>
+
+<div class="tip-grid">
+  {% for t in usage_tips %}
+  <div class="tip v-{{ t.variant }}">
+    <div class="kind">{{ t.kind }}</div>
+    <h4>{{ t.title }}</h4>
+    <p>{{ t.body|safe }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="closing-panel">
+  <div class="closing-inner">
+    <div class="closing-eyebrow">Accès à votre livrable</div>
+    <h3>Télécharger le dataset</h3>
+    <p>Le fichier {{ project.format }} complet et les métadonnées HuggingFace sont disponibles dans votre espace client STEF,
+    section « Livrables ». Lien de téléchargement valable 90 jours. Une version Parquet est également disponible sur demande.</p>
+    <div class="closing-contacts">
+      <div><div class="ck">Support technique</div><div class="cv">{{ contacts.support }}</div></div>
+      <div><div class="ck">RGPD / DPO</div><div class="cv">{{ contacts.dpo }}</div></div>
+      <div><div class="ck">Documentation</div><div class="cv">{{ contacts.docs }}</div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
